@@ -18,6 +18,10 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .skeleton { background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .spinner { border: 4px solid #1f2937; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -33,6 +37,9 @@
                         <button onclick="switchTab('matches')" class="tab-btn px-4 py-2 rounded-md hover:bg-gray-700 transition" data-target="matches">⚽ المباريات</button>
                     </div>
                 </div>
+                <button onclick="toggleFavorites()" class="hidden md:flex items-center px-4 py-2 rounded-md hover:bg-gray-700 transition text-yellow-400">
+                    <i class="fas fa-heart ml-2"></i>المفضلة
+                </button>
             </div>
         </div>
     </nav>
@@ -45,179 +52,387 @@
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h2 class="text-3xl font-bold">الأفلام الرائجة</h2>
                 <div class="relative w-full md:w-80">
-                    <!-- حقل البحث المباشر -->
                     <input type="text" id="searchInput" placeholder="بحث عن فيلم أو ممثل..." class="w-full bg-gray-800 text-white rounded-full py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
                     <i class="fas fa-search absolute left-4 top-3 text-gray-400"></i>
                 </div>
             </div>
             
-            <!-- حاوية الأفلام (سيتم تعبئتها ديناميكياً بواسطة الجافاسكربت) -->
+            <!-- تصفية متقدمة -->
+            <div class="mb-6 flex flex-col md:flex-row gap-4 flex-wrap">
+                <select id="genreFilter" class="bg-gray-800 text-white rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">جميع الأنواع</option>
+                    <option value="28">أكشن</option>
+                    <option value="35">كوميديا</option>
+                    <option value="18">دراما</option>
+                    <option value="878">خيال علمي</option>
+                    <option value="27">رعب</option>
+                </select>
+                
+                <select id="sortFilter" class="bg-gray-800 text-white rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="popularity.desc">الأكثر شهرة</option>
+                    <option value="vote_average.desc">الأعلى تقييماً</option>
+                    <option value="release_date.desc">الأحدث</option>
+                </select>
+            </div>
+
+            <!-- حاوية الأفلام -->
             <div id="moviesContainer" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                <!-- سيتم حقن البطاقات هنا -->
+                <!-- يتم تحميل الأفلام هنا -->
+            </div>
+
+            <!-- زر تحميل المزيد -->
+            <div class="text-center mt-8">
+                <button onclick="loadMoreMovies()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition font-bold">
+                    <i class="fas fa-sync-alt ml-2"></i>تحميل المزيد
+                </button>
             </div>
         </section>
 
         <!-- تبويب المباريات -->
         <section id="matches" class="tab-content">
-            <div class="bg-red-900/30 border border-red-500/50 rounded-lg p-3 mb-6 flex items-center justify-between">
-                <div class="flex items-center">
-                    <div class="w-3 h-3 bg-red-500 rounded-full pulse ml-3"></div>
-                    <span class="font-bold text-red-400">مباشر الآن:</span>
-                    <span class="ml-2 text-sm text-gray-300">يوجد 1 مباراة جارية حالياً</span>
-                </div>
+            <h2 class="text-3xl font-bold mb-6">المباريات الحية</h2>
+            
+            <div class="mb-6">
+                <select id="leagueFilter" class="bg-gray-800 text-white rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">جميع الدوريات</option>
+                    <option value="39">الدوري الإنجليزي</option>
+                    <option value="140">الدوري الإسباني</option>
+                    <option value="78">الدوري الألماني</option>
+                    <option value="61">الدوري الإيطالي</option>
+                    <option value="2">دوري الأبطال</option>
+                </select>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-gray-800 rounded-lg p-4 border-l-4 border-red-500 cursor-pointer" onclick="toggleMatchDetails('match1')">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs text-gray-400">دوري أبطال أوروبا</span>
-                        <div class="flex items-center text-red-500 font-bold text-sm">
-                            <span class="pulse mr-1">🔴</span> د. 75
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center text-xl font-bold">
-                        <div class="flex items-center w-1/3"><img src="https://media.api-sports.io/football/teams/541.png" class="w-6 h-6 ml-2" alt="Real Madrid"> ريال مدريد</div>
-                        <div class="bg-gray-900 px-4 py-1 rounded text-red-400 tracking-widest">2 - 1</div>
-                        <div class="flex items-center justify-end w-1/3"><img src="https://media.api-sports.io/football/teams/157.png" class="w-6 h-6 mr-2" alt="Bayern"> بايرن ميونخ</div>
-                    </div>
-                    <div id="match1" class="hidden mt-4 pt-4 border-t border-gray-700 text-sm">
-                        <div class="flex justify-between text-gray-300">
-                            <div>⚽ فينيسيوس جونيور (15')</div>
-                            <div class="text-left">⚽ هاري كين (42')</div>
-                        </div>
-                    </div>
-                </div>
+            <div id="matchesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- يتم تحميل المباريات هنا -->
             </div>
         </section>
 
     </main>
 
+    <!-- Modal تفاصيل الفيلم -->
+    <div id="movieModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div class="p-6">
+                <button onclick="closeModal()" class="float-left text-2xl cursor-pointer text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div id="modalContent"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // دالة التبديل بين التبويبات
+        // ==========================================
+        // إعدادات API
+        // ==========================================
+        const TMDB_API_KEY = 'YOUR_TMDB_API_KEY'; // استبدل بـ API Key الخاص بك من https://www.themoviedb.org/settings/api
+        const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+        const API_SPORTS_KEY = '38833280cf5b40eb039aee502e096689'; // مفتاح API-Sports
+        const API_SPORTS_URL = 'https://api.api-football.com/v3';
+
+        // ==========================================
+        // متغيرات عامة
+        // ==========================================
+        let currentMoviePage = 1;
+        let currentGenre = '';
+        let currentSort = 'popularity.desc';
+        let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+        let allMatches = [];
+
+        // ==========================================
+        // دوال التبديل بين التبويبات
+        // ==========================================
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('text-blue-400'));
             
             document.getElementById(tabId).classList.add('active');
             document.querySelector(`[data-target="${tabId}"]`).classList.add('text-blue-400');
-        }
 
-        // دالة إظهار وإخفاء تفاصيل المباراة
-        function toggleMatchDetails(matchId) {
-            document.getElementById(matchId).classList.toggle('hidden');
-        }
-
-        // ==========================================
-        // قسم البيانات الوهمية (Mock Data) والبحث
-        // ==========================================
-
-        // 1. مصفوفة الأفلام محاكية لبيانات TMDB
-        const mockMovies = [
-            {
-                id: 1,
-                title: "Deadpool & Wolverine",
-                image: "https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
-                rating: 8.5,
-                genres: "أكشن, كوميديا",
-                actors: ["Ryan Reynolds", "Hugh Jackman"]
-            },
-            {
-                id: 2,
-                title: "Dune: Part Two",
-                image: "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2JGqqc9bG.jpg",
-                rating: 8.3,
-                genres: "خيال علمي, مغامرة",
-                actors: ["Timothée Chalamet", "Zendaya"]
-            },
-            {
-                id: 3,
-                title: "Oppenheimer",
-                image: "https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
-                rating: 8.9,
-                genres: "سيرة ذاتية, دراما",
-                actors: ["Cillian Murphy", "Robert Downey Jr."]
-            },
-            {
-                id: 4,
-                title: "The Batman",
-                image: "https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg",
-                rating: 7.8,
-                genres: "أكشن, جريمة",
-                actors: ["Robert Pattinson", "Zoë Kravitz"]
-            },
-            {
-                id: 5,
-                title: "Interstellar",
-                image: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
-                rating: 8.6,
-                genres: "خيال علمي, دراما",
-                actors: ["Matthew McConaughey", "Anne Hathaway"]
+            if (tabId === 'matches' && allMatches.length === 0) {
+                fetchMatches();
             }
-        ];
+        }
 
-        // 2. العناصر من واجهة المستخدم
-        const moviesContainer = document.getElementById('moviesContainer');
-        const searchInput = document.getElementById('searchInput');
+        // ==========================================
+        // دوال الأفلام - TMDB API
+        // ==========================================
+        async function fetchMovies(page = 1, genre = '', sort = 'popularity.desc') {
+            try {
+                showLoadingSpinner('moviesContainer');
+                
+                let url = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&language=ar&page=${page}&sort_by=${sort}`;
+                
+                if (genre) {
+                    url += `&with_genres=${genre}`;
+                }
 
-        // 3. دالة بناء وعرض الأفلام في الصفحة
-        function renderMovies(moviesArray) {
-            moviesContainer.innerHTML = ''; // تفريغ الحاوية قبل إعادة الرسم
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('فشل تحميل الأفلام');
+                
+                const data = await response.json();
+                renderMovies(data.results);
+                
+            } catch (error) {
+                console.error('خطأ:', error);
+                showError('moviesContainer', 'حدث خطأ في تحميل الأفلام. تأكد من إدراج مفتاح API الصحيح.');
+            }
+        }
 
-            // في حال لم يتم العثور على نتائج
-            if (moviesArray.length === 0) {
-                moviesContainer.innerHTML = `
+        function renderMovies(movies) {
+            const container = document.getElementById('moviesContainer');
+            
+            if (movies.length === 0) {
+                container.innerHTML = `
                     <div class="col-span-full text-center py-12 text-gray-500">
                         <i class="fas fa-search-minus text-4xl mb-3"></i>
-                        <p class="text-lg">لم يتم العثور على أفلام أو ممثلين بهذا الاسم</p>
+                        <p class="text-lg">لم يتم العثور على أفلام</p>
                     </div>
                 `;
                 return;
             }
 
-            // رسم البطاقات
-            moviesArray.forEach(movie => {
-                const movieCard = `
-                    <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition duration-300 flex flex-col h-full">
-                        <img src="${movie.image}" alt="${movie.title}" class="w-full h-64 object-cover">
+            container.innerHTML = movies.map(movie => {
+                const isFavorite = favorites.some(fav => fav.id === movie.id);
+                const posterPath = movie.poster_path 
+                    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                    : 'https://via.placeholder.com/500x750?text=No+Image';
+
+                return `
+                    <div class="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition duration-300 flex flex-col h-full relative group">
+                        <img src="${posterPath}" alt="${movie.title}" class="w-full h-64 object-cover" onerror="this.src='https://via.placeholder.com/500x750?text=Error'">
+                        
+                        <button onclick="toggleFavorite(${movie.id}, '${movie.title}', '${posterPath}')" class="absolute top-2 right-2 bg-red-600 p-2 rounded-full opacity-0 group-hover:opacity-100 transition">
+                            <i class="fas fa-heart ${isFavorite ? '' : 'far'}"></i>
+                        </button>
+                        
                         <div class="p-4 flex flex-col flex-grow">
-                            <h3 class="font-bold text-lg mb-1 truncate" title="${movie.title}">${movie.title}</h3>
-                            <p class="text-xs text-gray-400 mb-2 truncate" title="${movie.actors.join('، ')}">بطولة: ${movie.actors.join('، ')}</p>
+                            <h3 class="font-bold text-lg mb-1 truncate cursor-pointer hover:text-blue-400" onclick="showMovieDetails(${movie.id}, '${movie.title}')" title="${movie.title}">${movie.title}</h3>
                             
                             <div class="flex justify-between items-center text-sm text-gray-400 mt-auto pt-2">
-                                <span><i class="fas fa-star text-yellow-400 mr-1"></i> ${movie.rating}</span>
-                                <span class="text-xs bg-gray-700 px-2 py-1 rounded">${movie.genres.split(',')[0]}</span>
+                                <span><i class="fas fa-star text-yellow-400 mr-1"></i> ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}</span>
+                                <span class="text-xs">${movie.release_date ? movie.release_date.split('-')[0] : 'N/A'}</span>
                             </div>
                             
-                            <button class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded transition font-medium">
-                                <i class="fas fa-plus ml-1"></i> قائمتي
+                            <button onclick="showMovieDetails(${movie.id}, '${movie.title}')" class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded transition font-medium">
+                                <i class="fas fa-info-circle ml-1"></i> التفاصيل
                             </button>
                         </div>
                     </div>
                 `;
-                moviesContainer.innerHTML += movieCard;
-            });
+            }).join('');
         }
 
-        // 4. مستمع الأحداث (Event Listener) للبحث المباشر
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase().trim();
-            
-            const filteredMovies = mockMovies.filter(movie => {
-                // البحث في اسم الفيلم
-                const titleMatch = movie.title.toLowerCase().includes(searchTerm);
-                // البحث في أسماء الممثلين
-                const actorMatch = movie.actors.some(actor => actor.toLowerCase().includes(searchTerm));
-                
-                return titleMatch || actorMatch;
-            });
+        async function showMovieDetails(movieId, title) {
+            try {
+                const response = await fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=ar`);
+                const movie = await response.json();
 
-            // إعادة رسم الأفلام بناءً على النتائج المفلترة
-            renderMovies(filteredMovies);
+                const posterPath = movie.poster_path 
+                    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                    : 'https://via.placeholder.com/500x750?text=No+Image';
+
+                const modal = document.getElementById('movieModal');
+                const content = document.getElementById('modalContent');
+
+                content.innerHTML = `
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <img src="${posterPath}" alt="${movie.title}" class="w-full md:w-48 h-auto rounded-lg">
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold mb-2">${movie.title}</h2>
+                            <p class="text-gray-400 mb-3">${movie.release_date}</p>
+                            <p class="text-yellow-400 mb-3"><i class="fas fa-star mr-1"></i>${movie.vote_average.toFixed(1)}/10</p>
+                            <p class="text-gray-300 mb-4">${movie.overview || 'لا توجد وصف متاح'}</p>
+                            <p class="text-sm text-gray-400">
+                                <strong>الأنواع:</strong> ${movie.genres.map(g => g.name).join(', ')}
+                            </p>
+                            <p class="text-sm text-gray-400 mt-2">
+                                <strong>وقت العرض:</strong> ${movie.runtime || 'N/A'} دقيقة
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                modal.classList.remove('hidden');
+            } catch (error) {
+                console.error('خطأ:', error);
+                alert('فشل تحميل تفاصيل الفيلم');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('movieModal').classList.add('hidden');
+        }
+
+        function loadMoreMovies() {
+            currentMoviePage++;
+            fetchMovies(currentMoviePage, currentGenre, currentSort);
+        }
+
+        // ==========================================
+        // دوال المفضلة
+        // ==========================================
+        function toggleFavorite(movieId, title, posterPath) {
+            const index = favorites.findIndex(fav => fav.id === movieId);
+            
+            if (index > -1) {
+                favorites.splice(index, 1);
+            } else {
+                favorites.push({ id: movieId, title, posterPath });
+            }
+            
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            location.reload();
+        }
+
+        function toggleFavorites() {
+            alert('قائمة المفضلة: ' + (favorites.length === 0 ? 'فارغة' : favorites.map(f => f.title).join(', ')));
+        }
+
+        // ==========================================
+        // دوال المباريات - API-Sports
+        // ==========================================
+        async function fetchMatches() {
+            try {
+                showLoadingSpinner('matchesContainer');
+                
+                // تحصل على المباريات الحية اليوم
+                const today = new Date().toISOString().split('T')[0];
+                
+                const response = await fetch(`${API_SPORTS_URL}/fixtures?date=${today}`, {
+                    headers: {
+                        'x-apisports-key': API_SPORTS_KEY
+                    }
+                });
+
+                if (!response.ok) throw new Error('فشل تحميل المباريات');
+                
+                const data = await response.json();
+                allMatches = data.response || [];
+                renderMatches(allMatches);
+                
+            } catch (error) {
+                console.error('خطأ:', error);
+                showError('matchesContainer', 'حدث خطأ في تحميل المباريات. تأكد من إدراج مفتاح API الصحيح.');
+            }
+        }
+
+        function renderMatches(matches) {
+            const container = document.getElementById('matchesContainer');
+            
+            if (matches.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-gray-500">
+                        <i class="fas fa-calendar-times text-4xl mb-3"></i>
+                        <p class="text-lg">لا توجد مباريات حية في الوقت الحالي</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = matches.map(match => {
+                const { fixture, teams, goals, score } = match;
+                const isLive = fixture.status.short === 'LIVE';
+                const statusClass = isLive ? 'border-l-4 border-red-500 bg-red-900/30' : 'border-l-4 border-blue-500';
+
+                return `
+                    <div class="bg-gray-800 rounded-lg p-4 ${statusClass} cursor-pointer hover:shadow-lg transition" onclick="toggleMatchDetails('match-${fixture.id}')">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs text-gray-400">${match.league.name}</span>
+                            <div class="flex items-center text-sm font-bold">
+                                ${isLive ? `<span class="pulse mr-1 text-red-500">🔴</span> <span class="text-red-500">مباشر</span>` : `<span class="text-gray-400">${fixture.status.elapsed || fixture.status.short}'</span>`}
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center text-lg font-bold mb-2">
+                            <div class="flex items-center w-1/3">
+                                ${teams.home.logo ? `<img src="${teams.home.logo}" class="w-6 h-6 ml-2" alt="${teams.home.name}">` : ''}
+                                <span class="truncate">${teams.home.name}</span>
+                            </div>
+                            <div class="bg-gray-900 px-4 py-1 rounded ${isLive ? 'text-red-400' : 'text-white'} tracking-widest">${goals.home || 0} - ${goals.away || 0}</div>
+                            <div class="flex items-center justify-end w-1/3">
+                                <span class="truncate text-right">${teams.away.name}</span>
+                                ${teams.away.logo ? `<img src="${teams.away.logo}" class="w-6 h-6 mr-2" alt="${teams.away.name}">` : ''}
+                            </div>
+                        </div>
+
+                        <div id="match-${fixture.id}" class="hidden mt-4 pt-4 border-t border-gray-700 text-sm">
+                            <div class="space-y-2 text-gray-300">
+                                <p><strong>الملعب:</strong> ${fixture.venue?.name || 'غير محدد'}</p>
+                                <p><strong>الوقت:</strong> ${new Date(fixture.date).toLocaleString('ar-EG')}</p>
+                                <p><strong>الحكم:</strong> ${fixture.referee || 'لم يتم تحديده'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleMatchDetails(matchId) {
+            document.getElementById(matchId).classList.toggle('hidden');
+        }
+
+        // ==========================================
+        // دوال مساعدة
+        // ==========================================
+        function showLoadingSpinner(containerId) {
+            document.getElementById(containerId).innerHTML = `
+                <div class="col-span-full flex justify-center py-12">
+                    <div class="spinner"></div>
+                </div>
+            `;
+        }
+
+        function showError(containerId, message) {
+            document.getElementById(containerId).innerHTML = `
+                <div class="col-span-full text-center py-12 text-red-500">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
+                    <p class="text-lg">${message}</p>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // مستمعو الأحداث
+        // ==========================================
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            if (searchTerm) {
+                fetchMovies(1, currentGenre, currentSort);
+            }
         });
 
-        // 5. عرض جميع الأفلام عند تحميل الصفحة لأول مرة
-        renderMovies(mockMovies);
+        document.getElementById('genreFilter').addEventListener('change', (e) => {
+            currentGenre = e.target.value;
+            currentMoviePage = 1;
+            fetchMovies(1, currentGenre, currentSort);
+        });
 
+        document.getElementById('sortFilter').addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            currentMoviePage = 1;
+            fetchMovies(1, currentGenre, currentSort);
+        });
+
+        document.getElementById('leagueFilter').addEventListener('change', (e) => {
+            const leagueId = e.target.value;
+            if (leagueId) {
+                // يمكن تصفية المباريات حسب الدوري
+            }
+        });
+
+        // تحميل الأفلام عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchMovies();
+        });
+
+        // إغلاق Modal عند الضغط خارجه
+        document.getElementById('movieModal').addEventListener('click', (e) => {
+            if (e.target.id === 'movieModal') {
+                closeModal();
+            }
+        });
     </script>
 </body>
 </html>
